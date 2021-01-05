@@ -9,7 +9,7 @@ import 'rc-slider/assets/index.css';
 
 import {Button, ToggleButton, ToggleButtonGroup} from 'react-bootstrap';
 
-import Tone from 'tone';
+import * as Tone from 'tone';
 import StartAudioContext from 'startaudiocontext';
 
 class App extends Component {
@@ -40,7 +40,7 @@ class App extends Component {
             isPlaying: false,
             userStarted: false,
             playButtonText: buttonText,
-            synth: new Tone.PolySynth(6, Tone.Synth, {
+            synth: new Tone.PolySynth(Tone.Synth, {
                 "oscillator": {
                     "type": "sine"
                 },
@@ -49,11 +49,11 @@ class App extends Component {
                     "decay": 0.00,
                     "sustain": 0.07,
                     "release": 0.08,
-                }
-            }).toMaster(),
+                },
+            }).toDestination(),
             osc: new Tone.Oscillator({
                 "frequency": constants.DEFAULT_FREQ
-            }).toMaster()
+            }).toDestination()
         }
     }
 
@@ -70,7 +70,6 @@ class App extends Component {
     componentDidMount = () => {
         //set the bpm and initialize sound context
         Tone.Transport.bpm.value = 90 * 4;
-        Tone.context.latencyHint = 'interactive';
         StartAudioContext(Tone.context, '.App');
         // make sure volume is off initially
         Tone.Master.volume.rampTo(-Infinity, 0.05);
@@ -116,13 +115,14 @@ class App extends Component {
         let freqList = this.generateFreqs(freq);
         let currentFreqList = [];
         let maxPatternLength = constants.LOOP_REPEAT * freqList.length;
+        
         let newSequence = new Tone.Sequence((time, frequency) => {
             seqCount++;
             if (seqCount < maxPatternLength) {
                 if (currentFreqList.length === 0) {
                     currentFreqList = this.shuffle(freqList.slice());
                 }
-                synth.triggerAttackRelease(currentFreqList.pop(), "4n");
+                synth.triggerAttackRelease(currentFreqList.pop(), "4n", time);
             } else {
                 if (seqCount < maxPatternLength + constants.REST_LENGTH) {
                     // do nothing
@@ -130,7 +130,7 @@ class App extends Component {
                     seqCount = 0;
                 }
             }
-        }, freqSeq);
+        }, freqSeq, '4n');
         this.setState({sequence: newSequence});
         newSequence.set({loop: true});
         newSequence.start(0);
